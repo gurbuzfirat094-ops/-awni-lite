@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#050914">
+<title>AWNI Lite</title>
+<style>
+:root{color-scheme:dark;--cyan:#56e5ff;--muted:#93a4bc}
+*{box-sizing:border-box}
+body{margin:0;background:radial-gradient(ellipse at 50% 25%,#10284a 0,#070d1a 42%,#03050b 100%);color:#edf8ff;font-family:system-ui,-apple-system,Segoe UI,sans-serif;min-height:100vh}
+main{max-width:560px;margin:auto;padding:24px 18px 36px}
+header{text-align:center;padding:12px 0 20px}
+.kicker{font-size:11px;letter-spacing:.28em;color:var(--cyan)}
+h1{font-size:38px;letter-spacing:.2em;margin:7px 0 2px}
+.sub{color:var(--muted);font-size:13px}
+.core-wrap{display:flex;justify-content:center;padding:12px 0 20px}
+.core{width:164px;height:164px;border-radius:50%;border:1px solid #56e5ff88;display:grid;place-items:center;box-shadow:0 0 24px #1bbde433,inset 0 0 30px #1bbde422;position:relative}
+.core:before,.core:after{content:"";position:absolute;border:1px solid #56e5ff55;border-radius:50%;inset:12px}
+.core:after{inset:26px;border-style:dashed}
+.orb{width:64px;height:64px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#e8ffff,#56e5ff 28%,#1673b8 62%,#0b1a3a);box-shadow:0 0 28px #56e5ff99}
+.status{text-align:center;color:var(--cyan);font-size:13px;min-height:24px;margin-bottom:14px}
+.panel{border:1px solid #27415e;background:#08111fdd;border-radius:18px;padding:16px;margin:12px 0}
+.label{font-size:12px;color:var(--muted);margin-bottom:8px}
+#reply{font-size:16px;line-height:1.5;min-height:48px;white-space:pre-wrap}
+.row{display:flex;gap:9px}
+button,input{font:inherit;border-radius:12px}
+button{border:1px solid #2c6881;background:#10263b;color:#effcff;padding:12px 14px;cursor:pointer}
+button.primary{background:linear-gradient(135deg,#167ca0,#164a78);border-color:#56e5ff;flex:1}
+button:active{transform:scale(.98)}
+input{min-width:0;flex:1;background:#050b14;border:1px solid #29415c;color:#fff;padding:12px}
+.small{font-size:12px;color:var(--muted);line-height:1.5}
+ul{padding-left:20px;color:#c5d6e8;font-size:13px;line-height:1.8}
+footer{text-align:center;font-size:11px;color:#6d829c;padding:16px}
+</style>
+</head>
+<body>
+<main>
+<header><div class="kicker">PERSONAL AI • PROTOTYPE</div><h1>AWNI</h1><div class="sub">LITE // Kişisel dijital asistanın</div></header>
+<div class="core-wrap"><div class="core"><div class="orb"></div></div></div>
+<div class="status" id="status">Hazırım. Mikrofon düğmesine basıp konuş.</div>
+<section class="panel"><div class="label">AWNI'NİN YANITI</div><div id="reply">Selam knk! Ben AWNI. Şimdilik temel komutları yapabiliyorum. Birlikte geliştireceğiz.</div></section>
+<section class="panel">
+<div class="label">SESLE KOMUT VER</div>
+<div class="row"><button class="primary" id="mic">🎙️ Konuş</button><button id="stop">Sesi durdur</button></div>
+<p class="small">Mikrofonu kendin başlatırsın. Bu ilk sürüm arka planda sürekli dinlemez. Ses tanıma tarayıcı/cihaz desteğine bağlıdır.</p>
+</section>
+<section class="panel">
+<div class="label">YAZARAK KOMUT VER</div>
+<form class="row" id="form"><input id="command" autocomplete="off" placeholder="Örn. saat kaç, not al..." aria-label="Komut"><button type="submit">Gönder</button></form>
+</section>
+<section class="panel"><div class="label">KAYITLI NOTLAR</div><div id="notes" class="small">Henüz not yok.</div><div class="row" style="margin-top:10px"><button id="clear">Notları temizle</button></div></section>
+<section class="panel"><div class="label">ŞİMDİLİK ANLADIĞI KOMUTLAR</div>
+<ul><li>“AWNI” — seni selamlar</li><li>“Saat kaç?” — yerel saati söyler</li><li>“Tarih ne?” — bugünün tarihini söyler</li><li>“Not al [metin]” — notu bu cihazda saklar</li><li>“Notlarımı göster” — kayıtlı notları gösterir</li><li>“Yardım” — komutları listeler</li></ul>
+</section>
+<footer>AWNI Lite • İlk prototip • Notlar yalnızca bu tarayıcıda saklanır</footer>
+</main>
+<script>
+const $=id=>document.getElementById(id);
+let notes=[];
+try{notes=JSON.parse(localStorage.getItem('awni_notes')||'[]')}catch(e){notes=[]}
+function renderNotes(){ $('notes').textContent=notes.length?notes.map((n,i)=>(i+1)+'. '+n).join('\\n'):'Henüz not yok.'; }
+function say(text){
+  $('reply').textContent=text;
+  if(!('speechSynthesis' in window)){ $('status').textContent='Metin yanıtı hazır; bu tarayıcı sesli yanıtı desteklemiyor.';return; }
+  speechSynthesis.cancel();
+  const u=new SpeechSynthesisUtterance(text);u.lang='tr-TR';u.rate=1;u.pitch=1;
+  const voices=speechSynthesis.getVoices();const tr=voices.find(v=>v.lang&&v.lang.toLowerCase().startsWith('tr'));
+  if(tr)u.voice=tr;
+  u.onstart=()=>{$('status').textContent='AWNI konuşuyor…'};
+  u.onend=()=>{$('status').textContent='Hazırım.'};
+  speechSynthesis.speak(u);
+}
+function command(raw){
+  const s=raw.trim(), t=s.toLocaleLowerCase('tr-TR');
+  if(!s)return;
+  if(t==='awni'||t.includes('awni')){
+    const rest=t.replace(/awni/g,'').trim();
+    if(!rest){say('Buradayım knk. Ne yapalım?');return;}
+  }
+  if(t.includes('yardım')||t.includes('hangi komut')){
+    say('Şimdilik saat kaç, tarih ne, not al ve notlarımı göster komutlarını kullanabilirsin.');return;
+  }
+  if(t.includes('saat kaç')||t==='saat'){
+    say('Şu an saat '+new Date().toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit'})+'.');return;
+  }
+  if(t.includes('tarih ne')||t.includes('bugün günlerden')||t.includes('bugünün tarihi')){
+    say('Bugün '+new Date().toLocaleDateString('tr-TR',{weekday:'long',year:'numeric',month:'long',day:'numeric'})+'.');return;
+  }
+  if(t.includes('notlarımı göster')||t.includes('notlarimı göster')||t==='notlar'){
+    say(notes.length?'Notların: '+notes.map((n,i)=>(i+1)+'. '+n).join('. '):'Henüz kayıtlı notun yok. Not al, ardından yazmak istediğin şeyi söyle.');
+    return;
+  }
+  const m=s.match(/not al\s*[:,-]?\s*(.*)/i);
+  if(m){
+    const note=m[1].trim();
+    if(!note){say('Tabii. “Not al, marketten süt al” gibi söyle.');return;}
+    notes.push(note);try{localStorage.setItem('awni_notes',JSON.stringify(notes))}catch(e){}
+    renderNotes();say('Notunu kaydettim: '+note);return;
+  }
+  if(t.includes('teşekkür')||t.includes('sağ ol')){say('Her zaman knk. AWNI geliştikçe daha fazlasını yapacağım.');return;}
+  say('Komutunu aldım: '+s+'. Şimdilik bunu yapmayı bilmiyorum. “Yardım” diyerek deneyebileceğin komutları görebilirsin.');
+}
+$('form').addEventListener('submit',e=>{e.preventDefault();command($('command').value);$('command').value='';});
+$('clear').addEventListener('click',()=>{notes=[];try{localStorage.removeItem('awni_notes')}catch(e){}renderNotes();say('Notlarını temizledim.');});
+$('stop').addEventListener('click',()=>{if('speechSynthesis'in window)speechSynthesis.cancel();$('status').textContent='Ses durduruldu.';});
+$('mic').addEventListener('click',()=>{
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(!SR){say('Bu tarayıcıda ses tanıma bulunamadı. Yazı kutusunu kullanabilir veya Chrome ile tekrar deneyebilirsin.');return;}
+  const r=new SR();r.lang='tr-TR';r.continuous=false;r.interimResults=false;
+  $('status').textContent='Dinliyorum… Şimdi konuş.';
+  r.onresult=e=>{const heard=e.results[0][0].transcript;$('command').value=heard;$('status').textContent='Duyduğum: '+heard;command(heard);};
+  r.onerror=e=>{$('status').textContent='Ses tanıma hatası: '+e.error+'. Mikrofon iznini ve internet bağlantısını kontrol et.';};
+  r.onend=()=>{if($('status').textContent==='Dinliyorum… Şimdi konuş.')$('status').textContent='Dinleme bitti.';};
+  try{r.start()}catch(e){$('status').textContent='Mikrofon başlatılamadı. Sayfayı yenileyip tekrar dene.';}
+});
+renderNotes();
+if('speechSynthesis' in window)speechSynthesis.getVoices();
+</script>
+</body>
+</html>
