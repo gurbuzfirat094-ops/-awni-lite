@@ -85,7 +85,7 @@ function cleanPrefix(text, prefixes){
   return value.trim();
 }
 function command(raw){
-  const s=raw.trim(), t=s.toLocaleLowerCase('tr-TR');
+  const s=raw.trim(), t=s.toLowerCase(); // Turkish locale lowercasing turns Instagram into dotless ı and breaks matching
   if(!s)return;
   if(t==='awni'||t==='hey awni'||t==='alo awni'){
     say('Buradayım knk. Ne yapalım?');return;
