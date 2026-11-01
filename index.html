@@ -43,7 +43,7 @@ footer{text-align:center;font-size:11px;color:#6d829c;padding:16px}
 <section class="panel">
 <div class="label">SESLE KOMUT VER</div>
 <div class="row"><button class="primary" id="mic">🎙️ Konuş</button><button id="stop">Sesi durdur</button></div>
-<p class="small">Mikrofonu kendin başlatırsın. Bu ilk sürüm arka planda sürekli dinlemez. Ses tanıma tarayıcı/cihaz desteğine bağlıdır.</p>
+<p class="small">Mikrofonu kendin başlatırsın. Bu sürüm arka planda sürekli dinlemez. Uygulama açma ve arama gibi işlemler Android/tarayıcı izinlerine bağlıdır.</p>
 </section>
 <section class="panel">
 <div class="label">YAZARAK KOMUT VER</div>
@@ -51,7 +51,7 @@ footer{text-align:center;font-size:11px;color:#6d829c;padding:16px}
 </section>
 <section class="panel"><div class="label">KAYITLI NOTLAR</div><div id="notes" class="small">Henüz not yok.</div><div class="row" style="margin-top:10px"><button id="clear">Notları temizle</button></div></section>
 <section class="panel"><div class="label">ŞİMDİLİK ANLADIĞI KOMUTLAR</div>
-<ul><li>“AWNI” — seni selamlar</li><li>“Saat kaç?” — yerel saati söyler</li><li>“Tarih ne?” — bugünün tarihini söyler</li><li>“Not al [metin]” — notu bu cihazda saklar</li><li>“Notlarımı göster” — kayıtlı notları gösterir</li><li>“Yardım” — komutları listeler</li></ul>
+<ul><li>“YouTube aç” / “Instagram aç” / “WhatsApp aç”</li><li>“Google’da motosiklet fiyatlarını ara”</li><li>“Haritalar aç” veya “Haritada Kocaeli ara”</li><li>“Telefon et 05XXXXXXXXX” — arama ekranını açar</li><li>“Mesaj yaz 05XXXXXXXXX merhaba” — SMS taslağı açar, göndermez</li><li>“Saat kaç?” / “Tarih ne?”</li><li>“Not al [metin]” / “Notlarımı göster”</li><li>“Yardım” — komutları listeler</li></ul>
 </section>
 <footer>AWNI Lite • İlk prototip • Notlar yalnızca bu tarayıcıda saklanır</footer>
 </main>
@@ -71,15 +71,27 @@ function say(text){
   u.onend=()=>{$('status').textContent='Hazırım.'};
   speechSynthesis.speak(u);
 }
+function launch(url, message){
+  say(message);
+  // Navigasyon kullanıcıya açık bir komutla tetiklenir; Android/tarayıcı davranışı cihaza göre değişebilir.
+  setTimeout(()=>{ window.location.href=url; }, 450);
+}
+function cleanPrefix(text, prefixes){
+  let value=text.trim();
+  for(const prefix of prefixes){
+    const re=new RegExp('^'+prefix+'\\s*','i');
+    value=value.replace(re,'');
+  }
+  return value.trim();
+}
 function command(raw){
   const s=raw.trim(), t=s.toLocaleLowerCase('tr-TR');
   if(!s)return;
-  if(t==='awni'||t.includes('awni')){
-    const rest=t.replace(/awni/g,'').trim();
-    if(!rest){say('Buradayım knk. Ne yapalım?');return;}
+  if(t==='awni'||t==='hey awni'||t==='alo awni'){
+    say('Buradayım knk. Ne yapalım?');return;
   }
   if(t.includes('yardım')||t.includes('hangi komut')){
-    say('Şimdilik saat kaç, tarih ne, not al ve notlarımı göster komutlarını kullanabilirsin.');return;
+    say('YouTube aç, Instagram aç, WhatsApp aç, Google’da bir şey ara, Haritalar aç, telefon et ve mesaj yaz komutlarını deneyebilirsin. Ayrıca saat, tarih ve not komutları da çalışıyor.');return;
   }
   if(t.includes('saat kaç')||t==='saat'){
     say('Şu an saat '+new Date().toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit'})+'.');return;
@@ -88,8 +100,7 @@ function command(raw){
     say('Bugün '+new Date().toLocaleDateString('tr-TR',{weekday:'long',year:'numeric',month:'long',day:'numeric'})+'.');return;
   }
   if(t.includes('notlarımı göster')||t.includes('notlarimı göster')||t==='notlar'){
-    say(notes.length?'Notların: '+notes.map((n,i)=>(i+1)+'. '+n).join('. '):'Henüz kayıtlı notun yok. Not al, ardından yazmak istediğin şeyi söyle.');
-    return;
+    say(notes.length?'Notların: '+notes.map((n,i)=>(i+1)+'. '+n).join('. '):'Henüz kayıtlı notun yok. Not al, ardından yazmak istediğin şeyi söyle.');return;
   }
   const m=s.match(/not al\s*[:,-]?\s*(.*)/i);
   if(m){
@@ -99,7 +110,47 @@ function command(raw){
     renderNotes();say('Notunu kaydettim: '+note);return;
   }
   if(t.includes('teşekkür')||t.includes('sağ ol')){say('Her zaman knk. AWNI geliştikçe daha fazlasını yapacağım.');return;}
-  say('Komutunu aldım: '+s+'. Şimdilik bunu yapmayı bilmiyorum. “Yardım” diyerek deneyebileceğin komutları görebilirsin.');
+
+  // Uygulama açma ve web araması
+  if(/youtube|yutub/.test(t) && /(aç|ac|başlat|gir)/.test(t)){
+    launch('https://www.youtube.com/','YouTube açılıyor.');return;
+  }
+  if(/instagram/.test(t) && /(aç|ac|başlat|gir)/.test(t)){
+    launch('https://www.instagram.com/','Instagram açılıyor.');return;
+  }
+  if(/whatsapp|what'?s ?app/.test(t) && /(aç|ac|başlat|gir)/.test(t)){
+    launch('https://wa.me/','WhatsApp açılıyor.');return;
+  }
+  if(/harita|maps|yol tarifi/.test(t)){
+    let q=cleanPrefix(s,['awni','haritalar','harita','google maps','maps','haritada ara','haritada']);
+    q=q.replace(/^(aç|ac|aç ve|ac ve|bana)\s*/i,'').replace(/yol tarifi\s*(al|ver)?/i,'').replace(/\s+ara$/i,'').trim();
+    if(!q || /^(aç|ac)$/i.test(q)) launch('https://maps.google.com/','Google Haritalar açılıyor.');
+    else launch('https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(q),'Haritada '+q+' aranıyor.');
+    return;
+  }
+  const searchMatch=s.match(/(?:google(?:['’]?da| da)?|internette|webde)\s*(?:ara|araştır|arama yap)\s+(.+)/i) || s.match(/google(?:['’]?da| da)\s+(.+?)\s+ara/i) || s.match(/(.+?)\s+(?:diye )?google['’]da ara/i);
+  if(searchMatch){
+    const q=(searchMatch[1]||searchMatch[2]).trim();
+    launch('https://www.google.com/search?q='+encodeURIComponent(q),q+' için Google’da arama yapılıyor.');return;
+  }
+  if(/google aç|google'ı aç|googlei aç/i.test(t)){
+    launch('https://www.google.com/','Google açılıyor.');return;
+  }
+  const phone=s.match(/(?:telefon et|ara|arama yap)\s+(\+?[0-9][0-9\s()-]{7,})/i);
+  if(phone){
+    const number=phone[1].replace(/[^+\d]/g,'');
+    launch('tel:'+number,'Telefon arama ekranı açılıyor. Aramayı telefondan onaylayabilirsin.');return;
+  }
+  const sms=s.match(/(?:mesaj yaz|sms yaz|sms gönder|mesaj gönder)\s+(\+?[0-9][0-9\s()-]{7,})\s+(.+)/i);
+  if(sms){
+    const number=sms[1].replace(/[^+\d]/g,'');
+    const body=sms[2].trim();
+    launch('sms:'+number+'?body='+encodeURIComponent(body),'Mesaj taslağı açılıyor. Mesajı göndermeden önce kontrol et.');return;
+  }
+  if(/^(telefon|arama) aç$/.test(t)){
+    launch('tel:','Telefon uygulaması açılıyor.');return;
+  }
+  say('Komutunu duydum: '+s+'. Bu işlemi henüz tanımıyorum. “Yardım” diyerek desteklenen komutları duyabilirsin.');
 }
 $('form').addEventListener('submit',e=>{e.preventDefault();command($('command').value);$('command').value='';});
 $('clear').addEventListener('click',()=>{notes=[];try{localStorage.removeItem('awni_notes')}catch(e){}renderNotes();say('Notlarını temizledim.');});
